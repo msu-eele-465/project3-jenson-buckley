@@ -1,6 +1,27 @@
+//------------------------------------Header-----------------------------------//
+// main.c
+// P.Buckley & D. Graham  , EELE-367, Project 3
+// Nov 30 2024
+//
+// Clock Calculations
+// Effective clock rate = 1MHz / (8 * 4) = 31250 Hz (clock ticks per second)
+
+//----------------------------------Initilization---------------------------------//
 #include <msp430.h>
 #include <stdbool.h>
 
+// Led Variables
+int stepIndex = 0;      // Current step index
+int direction = 1;      // 1 for clockwise, -1 for counterclockwise
+int stepsRemaining = 0; // Steps left to complete the step cycle
+unsigned char stepSequence[] = {
+    0x01, // Step 1: BIT0 (P6.0)
+    0x02, // Step 2: BIT1 (P6.1)
+    0x04, // Step 3: BIT2 (P6.2)
+    0x08  // Step 4: BIT3 (P6.3)
+};
+
+//--------------------------------------Main-------------------------------------//
 int main(void)
 {
     // Stop watchdog timer
@@ -53,6 +74,45 @@ int main(void)
         // update global LED pattern array
         // or
         // break (lock system)
+}
+
+//------------------------------------Functions-----------------------------------//
+void setupMotor() {
+    // Configure Stepper Motor Outputs (P6.0 - P6.3)
+    P6DIR |= BIT0 | BIT1 | BIT2 | BIT3;
+    P6OUT &= ~(BIT0 | BIT1 | BIT2 | BIT3);
+    // Setup Timer B0
+    TB0CTL = TBSSEL__SMCLK | MC__STOP | TBCLR | ID__8; // SMCLK (1Mhz), Stop mode, clear timer, divide by 8
+    TB0EX0 = TBIDEX__4 ;   // Extra division by 4
+    TB0CCR0 = 153;  // Set initial speed
+    TB0CCTL0 = CCIE;      // Enable compare interrupt
+    // Code to move motor
+    //if (stepsRemaining == 0) {  // Start a new rotation only if no rotation in progress
+    //    direction = 1;          // Clockwise
+    //    stepsRemaining = 739;   // 36% of a rotation
+    //    TB0CCR0 = 212;          // Set speed to do 36% of a rotation in 5sec
+    //    TB0CTL |= MC__UP;       // Start timer
+    //}
+}
+
+//---------------------------Interupt-Service-Routines---------------------------//
+// Timer for Motor
+#pragma vector = TIMER0_B0_VECTOR
+__interrupt void ISR_TB0_CCR0(void)
+{
+    if (stepsRemaining > 0)
+    {
+        stepIndex = (stepIndex + 4 + direction) % 4; // Update step index
+        P6OUT = (P6OUT & 0xF0) | stepSequence[stepIndex]; // Update motor output
+        stepsRemaining--;   // Decrement steps remaining
+    }
+    else
+    {
+        TB0CTL &= ~MC__UP;  // Stop timer when all steps are completed
+        ADC_PressureReading();
+    }
+
+    TB0CCTL0 &= ~CCIFG;     // Clear interrupt flag
 }
 
 //-- Heartbeat LED ISR
