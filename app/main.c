@@ -10,7 +10,7 @@
 #include <msp430.h>
 #include <stdbool.h>
 
-// Led Variables
+// Led Array Variables
 int stepIndex = 0;      // Current step index
 int direction = 1;      // 1 for clockwise, -1 for counterclockwise
 int stepsRemaining = 0; // Steps left to complete the step cycle
@@ -20,6 +20,11 @@ unsigned char stepSequence[] = {
     0x04, // Step 3: BIT2 (P6.2)
     0x08  // Step 4: BIT3 (P6.3)
 };
+
+// RGB LED variables
+unsigned char rPWM = 0x0;
+unsigned char gPWM = 0x0;
+unsigned char bPWM = 0x0;
 
 //--------------------------------------Main-------------------------------------//
 int main(void)
@@ -33,11 +38,36 @@ int main(void)
     // ISR: ISR_HEARTBEAT
 
 //-- Setup RGB LED on P1.5, P1.6, P1.7
+    // Set up ports (outputs and driven low)
+    P1DIR |= BIT5;
+    P1DIR |= BIT6;
+    P1DIR |= BIT7;
+    P1OUT &= ~BIT5;      
+    P1OUT &= ~BIT6;
+    P1OUT &= ~BIT7;
     // global vars to hold R, G, and B pwm values in [0, 255)
-    // port (direction, initial value)
+    // rPWM, gPWM, bPWM
     // 3x: clock (setup, period, duty, clear/enable flag)
+    TB1CTL |= TBCLR;    // reset settings
+    TB1CTL |= TBSSEL__SMCLK;
+    TB1CTL |= MC__UP;
+    TB1CCR0 = 25500;        // period
+    TB1CCR1 = rPWM*100;     // red duty
+    TB1CCR2 = gPWM*100;     // green duty
+    TB1CCR3 = bPWM*100;     // blue duty
+    // Enable capture compare
+    TB1CCTL0 |= CCIE;
+    TB1CCTL1 |= CCIE;
+    TB1CCTL2 |= CCIE;
+    TB1CCTL3 |= CCIE;
+    // Clear IFG
+    TB1CCTL0 &= ~CCIFG;
+    TB1CCTL1 &= ~CCIFG;
+    TB1CCTL2 &= ~CCIFG;
+    TB1CCTL3 &= ~CCIFG;
     // 3x: ISR: ISR_<[R, G, B]>
     // FUNCTION: function for updating clock period, given clock and period in [0,255)
+    // update<Red, Green, Blue>Duty()
 
 //-- Setup LED array [0,7] on P2.1, P6.0, P6.1, P6.2, P6.3, P6.4, P3.7, P2.4
     // port (direction, initial value)
@@ -95,6 +125,17 @@ void setupMotor() {
     //}
 }
 
+void updateRedPWM(unsigned char duty) {
+    TB1CCR1 = duty*100;
+}
+
+void updateGreenPWM(unsigned char duty) {
+    TB1CCR2 = duty*100;
+}
+
+void updateBluePWM(unsigned char duty) {
+    TB1CCR3 = duty*100;
+}
 //---------------------------Interupt-Service-Routines---------------------------//
 // Timer for Motor
 #pragma vector = TIMER0_B0_VECTOR
@@ -119,9 +160,44 @@ __interrupt void ISR_TB0_CCR0(void)
     // toggle output
     // clear flag
 
-//-- ISR_<[R, G, B]>
-    // turn on/off based on compare/overflow
-    // clear flag
+//-- RGB PWM ISR: PERIOD
+#pragma vector = TIMER1_B0_VECTOR
+__interrupt void ISR_DUTY(void)
+{
+    // RGB all on
+    P1OUT |= BIT5;      
+    P1OUT |= BIT6;
+    P1OUT |= BIT7;
+    TB0CCTL0 &= ~CCIFG;  // clear CCR0 IFG
+}
+
+//-- RGB PWM ISR: RED DUTY
+#pragma vector = TIMER1_B1_VECTOR
+__interrupt void ISR_DUTY(void)
+{
+    // red off
+    P1OUT &= ~BIT5;      
+    TB0CCTL1 &= ~CCIFG;  // clear CCR1 IFG
+}
+
+//-- RGB PWM ISR: GREEN DUTY
+#pragma vector = TIMER1_B2_VECTOR
+__interrupt void ISR_DUTY(void)
+{
+    // green off
+    P1OUT &= ~BIT6;      
+    TB0CCTL2 &= ~CCIFG;  // clear CCR2 IFG
+}
+
+//-- RGB PWM ISR: BLUE DUTY
+#pragma vector = TIMER1_B3_VECTOR
+__interrupt void ISR_DUTY(void)
+{
+    // blue off
+    P1OUT &= ~BIT7;      
+    TB0CCTL3 &= ~CCIFG;  // clear CCR3 IFG
+}
+
 
 //-- ISR_PATTERN
     // step pattern step# forward circularly
