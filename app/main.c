@@ -9,6 +9,7 @@
 //----------------------------------Initilization---------------------------------//
 #include <msp430.h>
 #include <stdbool.h>
+#include <time.h>
 
 // Led Variables
 int stepIndex = 0;      // Current step index
@@ -65,15 +66,43 @@ int main(void)
     PM5CTL0 &= ~LOCKLPM5;
 
 //-- WHILE TRUE:
-    //-- Enter password
-        // while statement that is active for only 5 seconds
-        // poll keypad, checking if pw is correct (break out)
-
-    //-- Main loop
-        // poll keypad
-        // update global LED pattern array
-        // or
-        // break (lock system)
+    //-- STATES
+        // LOCKED
+            // PWM RGB to 0xc43e1d
+            // 1        -> UNLOCKING1
+                // save current time
+            // others   -> LOCKED
+        // UNLOCKING1
+            // PWM RGB to 0xc4921d
+            // if elapsed time > 5 s
+                //      -> LOCKED
+            // 1        -> UNLOCKING1
+            // others   -> LOCKED
+        // UNLOCKING2
+            // if elapsed time > 5 s
+                //      -> LOCKED
+            // 1        -> UNLOCKING1
+            // others   -> LOCKED
+        // UNLOCKING3
+            // if elapsed time > 5 s
+                //      -> LOCKED
+            // 1        -> UNLOCKED
+            // others   -> LOCKED
+        // UNLOCKED
+            // PWM RGB to 0x1da2c4
+            // D        -> LOCKED
+            // A        -> UNLOCKED
+                // decrease base period by 0.25 s
+            // B        -> UNLOCKED
+                // increase base period by 0.25 s
+            // 0-7      -> UNLOCKED
+                // PWM RGB to 0x<custom>
+                // update pattern to 0-7
+                // old_index[cur_pattern] = index
+                // if new pattern
+                    // set index to old_index[0-7] where old index starts as zeros and saves the last index of a pattern when it is switched
+                // else
+                    // set index to 0
 }
 
 //------------------------------------Functions-----------------------------------//
