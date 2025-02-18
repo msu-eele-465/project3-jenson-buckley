@@ -85,7 +85,7 @@ int main(void)
     PM5CTL0 &= ~LOCKLPM5;
 
     while (true) {
-        
+        char val = readKeypad();
     }
 }
 
