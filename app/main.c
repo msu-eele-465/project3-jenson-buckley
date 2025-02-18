@@ -21,11 +21,6 @@ unsigned char stepSequence[] = {
     0x08  // Step 4: BIT3 (P6.3)
 };
 
-// RGB LED variables
-unsigned char rPWM = 0x0;
-unsigned char gPWM = 0x0;
-unsigned char bPWM = 0x0;
-
 //--------------------------------------Main-------------------------------------//
 int main(void)
 {
@@ -52,9 +47,9 @@ int main(void)
     TB1CTL |= TBSSEL__SMCLK;
     TB1CTL |= MC__UP;
     TB1CCR0 = 25500;        // period
-    TB1CCR1 = rPWM*100;     // red duty
-    TB1CCR2 = gPWM*100;     // green duty
-    TB1CCR3 = bPWM*100;     // blue duty
+    TB1CCR1 = 0*100;     // red duty
+    TB1CCR2 = 0*100;     // green duty
+    TB1CCR3 = 0*100;     // blue duty
     // Enable capture compare
     TB1CCTL0 |= CCIE;
     TB1CCTL1 |= CCIE;
@@ -136,6 +131,7 @@ void updateGreenPWM(unsigned char duty) {
 void updateBluePWM(unsigned char duty) {
     TB1CCR3 = duty*100;
 }
+
 //---------------------------Interupt-Service-Routines---------------------------//
 // Timer for Motor
 #pragma vector = TIMER0_B0_VECTOR
