@@ -65,6 +65,23 @@ int main(void)
     // previously configure port settings
     PM5CTL0 &= ~LOCKLPM5;
 
+    char[] state = "LOCKED";
+    while (true) {
+        // poll keypad
+        if (state == "LOCKED") {
+
+        } else if (state == "UNLOCKING1") {
+
+        } else if (state == "UNLOCKING2") {
+
+        } else if (state == "UNLOCKING3") {
+
+        } else if (state == "UNLOCKED") {
+
+        } else {
+            state = "LOCKED";
+        }
+    }
 //-- WHILE TRUE:
     //-- STATES
         // LOCKED
