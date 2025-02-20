@@ -7,20 +7,13 @@
 // Effective clock rate = 1MHz / (8 * 4) = 31250 Hz (clock ticks per second)
 
 //----------------------------------Initilization---------------------------------//
-#include <msp430.h>
+#include "intrinsics.h"
+#include <msp430fr2355.h>
 #include <stdbool.h>
 
-// Led Array Variables
-int stepIndex = 0;      // Current step index
-int direction = 1;      // 1 for clockwise, -1 for counterclockwise
-int stepsRemaining = 0; // Steps left to complete the step cycle
-unsigned char stepSequence[] = {
-    0x01, // Step 1: BIT0 (P6.0)
-    0x02, // Step 2: BIT1 (P6.1)
-    0x04, // Step 3: BIT2 (P6.2)
-    0x08  // Step 4: BIT3 (P6.3)
-};
-
+void updateRedPWM(unsigned char);
+void updateGreenPWM(unsigned char);
+void updateBluePWM(unsigned char);
 //--------------------------------------Main-------------------------------------//
 int main(void)
 {
@@ -43,23 +36,23 @@ int main(void)
     // global vars to hold R, G, and B pwm values in [0, 255)
     // rPWM, gPWM, bPWM
     // 3x: clock (setup, period, duty, clear/enable flag)
-    TB1CTL |= TBCLR;    // reset settings
-    TB1CTL |= TBSSEL__SMCLK;
-    TB1CTL |= MC__UP;
-    TB1CCR0 = 25500;        // period
-    TB1CCR1 = 0*100;     // red duty
-    TB1CCR2 = 0*100;     // green duty
-    TB1CCR3 = 0*100;     // blue duty
+    TB3CTL |= TBCLR;    // reset settings
+    TB3CTL |= TBSSEL__SMCLK;
+    TB3CTL |= MC__UP;
+    TB3CCR0 = 255;        // period
+    TB3CCR2 = 1;     // red duty
+    TB3CCR3 = 1;     // green duty
+    TB3CCR4 = 1;     // blue duty
     // Enable capture compare
-    TB1CCTL0 |= CCIE;
-    TB1CCTL1 |= CCIE;
-    TB1CCTL2 |= CCIE;
-    TB1CCTL3 |= CCIE;
+    TB3CCTL0 |= CCIE;
+    TB3CCTL2 |= CCIE;
+    TB3CCTL3 |= CCIE;
+    TB3CCTL4 |= CCIE;
     // Clear IFG
-    TB1CCTL0 &= ~CCIFG;
-    TB1CCTL1 &= ~CCIFG;
-    TB1CCTL2 &= ~CCIFG;
-    TB1CCTL3 &= ~CCIFG;
+    TB3CCTL0 &= ~CCIFG;
+    TB3CCTL2 &= ~CCIFG;
+    TB3CCTL3 &= ~CCIFG;
+    TB3CCTL4 &= ~CCIFG;
     // 3x: ISR: ISR_<[R, G, B]>
     // FUNCTION: function for updating clock period, given clock and period in [0,255)
     // update<Red, Green, Blue>Duty()
@@ -88,6 +81,18 @@ int main(void)
     // Disable the GPIO power-on default high-impedance mdoe to activate
     // previously configure port settings
     PM5CTL0 &= ~LOCKLPM5;
+    __enable_interrupt();
+    __bis_SR_register(GIE); // Enable global interrupts
+
+
+    while (true) {
+        // turn on red
+        updateRedPWM(0xFF);
+        // turn on green
+        //updateGreenPWM(0xFF);
+        // turn on blue
+        //updateBluePWM(0xFF);
+    }
 
 //-- WHILE TRUE:
     //-- Enter password
@@ -102,100 +107,46 @@ int main(void)
 }
 
 //------------------------------------Functions-----------------------------------//
-void setupMotor() {
-    // Configure Stepper Motor Outputs (P6.0 - P6.3)
-    P6DIR |= BIT0 | BIT1 | BIT2 | BIT3;
-    P6OUT &= ~(BIT0 | BIT1 | BIT2 | BIT3);
-    // Setup Timer B0
-    TB0CTL = TBSSEL__SMCLK | MC__STOP | TBCLR | ID__8; // SMCLK (1Mhz), Stop mode, clear timer, divide by 8
-    TB0EX0 = TBIDEX__4 ;   // Extra division by 4
-    TB0CCR0 = 153;  // Set initial speed
-    TB0CCTL0 = CCIE;      // Enable compare interrupt
-    // Code to move motor
-    //if (stepsRemaining == 0) {  // Start a new rotation only if no rotation in progress
-    //    direction = 1;          // Clockwise
-    //    stepsRemaining = 739;   // 36% of a rotation
-    //    TB0CCR0 = 212;          // Set speed to do 36% of a rotation in 5sec
-    //    TB0CTL |= MC__UP;       // Start timer
-    //}
-}
-
 void updateRedPWM(unsigned char duty) {
-    TB1CCR1 = duty*100;
+    TB3CCR3 = duty;
 }
 
 void updateGreenPWM(unsigned char duty) {
-    TB1CCR2 = duty*100;
+    TB3CCR2 = duty;
 }
 
 void updateBluePWM(unsigned char duty) {
-    TB1CCR3 = duty*100;
+    TB3CCR4 = duty;
 }
 
 //---------------------------Interupt-Service-Routines---------------------------//
-// Timer for Motor
-#pragma vector = TIMER0_B0_VECTOR
-__interrupt void ISR_TB0_CCR0(void)
-{
-    if (stepsRemaining > 0)
-    {
-        stepIndex = (stepIndex + 4 + direction) % 4; // Update step index
-        P6OUT = (P6OUT & 0xF0) | stepSequence[stepIndex]; // Update motor output
-        stepsRemaining--;   // Decrement steps remaining
-    }
-    else
-    {
-        TB0CTL &= ~MC__UP;  // Stop timer when all steps are completed
-        ADC_PressureReading();
-    }
 
-    TB0CCTL0 &= ~CCIFG;     // Clear interrupt flag
-}
-
-//-- Heartbeat LED ISR
-    // toggle output
-    // clear flag
-
-//-- RGB PWM ISR: PERIOD
-#pragma vector = TIMER1_B0_VECTOR
-__interrupt void ISR_DUTY(void)
+#pragma vector = TIMER3_B0_VECTOR
+__interrupt void ISR_PWM_PERIOD(void)
 {
     // RGB all on
     P1OUT |= BIT5;      
     P1OUT |= BIT6;
     P1OUT |= BIT7;
-    TB0CCTL0 &= ~CCIFG;  // clear CCR0 IFG
+    TB3CCTL0 &= ~CCIFG;  // clear CCR0 IFG
 }
-
-//-- RGB PWM ISR: RED DUTY
-#pragma vector = TIMER1_B1_VECTOR
-__interrupt void ISR_DUTY(void)
+//-- RGB PWM ISR: RGB DUTIES
+#pragma vector = TIMER3_B1_VECTOR
+__interrupt void ISR_PWM_RGB(void)
 {
-    // red off
-    P1OUT &= ~BIT5;      
-    TB0CCTL1 &= ~CCIFG;  // clear CCR1 IFG
+    if (TB3IV & 0x2) {
+        // red off
+        P1OUT &= ~BIT5;      
+        TB3CCTL2 &= ~CCIFG;  // clear CCR1 IFG
+    }
+    if (TB3IV & 0x6) {
+        // green off
+        P1OUT &= ~BIT6;      
+        TB3CCTL3 &= ~CCIFG;  // clear CCR2 IFG
+    }
+    if (TB3IV & 0x8) {
+        // blue off
+        P1OUT &= ~BIT7;      
+        TB3CCTL4 &= ~CCIFG;  // clear CCR3 IFG
+    }
 }
-
-//-- RGB PWM ISR: GREEN DUTY
-#pragma vector = TIMER1_B2_VECTOR
-__interrupt void ISR_DUTY(void)
-{
-    // green off
-    P1OUT &= ~BIT6;      
-    TB0CCTL2 &= ~CCIFG;  // clear CCR2 IFG
-}
-
-//-- RGB PWM ISR: BLUE DUTY
-#pragma vector = TIMER1_B3_VECTOR
-__interrupt void ISR_DUTY(void)
-{
-    // blue off
-    P1OUT &= ~BIT7;      
-    TB0CCTL3 &= ~CCIFG;  // clear CCR3 IFG
-}
-
-
-//-- ISR_PATTERN
-    // step pattern step# forward circularly
-    // write current step to output
-    // clear flag
