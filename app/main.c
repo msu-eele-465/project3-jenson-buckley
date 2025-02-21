@@ -135,46 +135,81 @@ int main(void)
     PM5CTL0 &= ~LOCKLPM5;
     __enable_interrupt();       // Enable global interrupt
 
-    char[] state = "LOCKED";
+    // STATE
+    // 0    Locked
+    // 1    First correct digit entered
+    // 2    Second
+    // 3    Third
+    // 4    Unlocked
+    int state = 0;
     while (true) {
-        // poll keypad
-        if (state == "LOCKED") {
-
-        } else if (state == "UNLOCKING1") {
-
-        } else if (state == "UNLOCKING2") {
-
-        } else if (state == "UNLOCKING3") {
-
-        } else if (state == "UNLOCKED") {
-
-        } else {
-            state = "LOCKED";
+        char key_val = readKeypad();
+        if (key_val != 'X') {
+            if (state == 0) {
+                if (key_val==0x1) {
+                    state = 1;
+                    // PWM RGB to 0xc4921d
+                    updateRedPWM(0xC4);
+                    updateGreenPWM(0x92);
+                    updateBluePWM(0x1D);
+                    // TODO: save time
+                } else {
+                    state = 0;
+                }
+            } else if (state == 1) {
+                // if elapsed time > 5 s
+                //      -> LOCKED
+                //      update PWM color
+                if (key_val==0x1) {
+                    state = 2;
+                } else {
+                    state = 0;
+                    // PWM RGB to 0xc43e1d
+                    updateRedPWM(0xC4);
+                    updateGreenPWM(0x3E);
+                    updateBluePWM(0x1D);
+                }
+            } else if (state == 2) {
+                // if elapsed time > 5 s
+                //      -> LOCKED
+                //      update PWM color
+                if (key_val==0x1) {
+                    state = 3;
+                } else {
+                    state = 0;
+                    // PWM RGB to 0xc43e1d
+                    updateRedPWM(0xC4);
+                    updateGreenPWM(0x3E);
+                    updateBluePWM(0x1D);
+                }
+            } else if (state == 3) {
+                // if elapsed time > 5 s
+                //      -> LOCKED
+                //      update PWM color
+                if (key_val==0x1) {
+                    state = 4;
+                    // PWM RGB to 0x1da2c4
+                    updateRedPWM(0x1D);
+                    updateGreenPWM(0xA2);
+                    updateBluePWM(0xC4);
+                } else {
+                    state = 0;
+                    // PWM RGB to 0xc43e1d
+                    updateRedPWM(0xC4);
+                    updateGreenPWM(0x3E);
+                    updateBluePWM(0x1D);
+                }
+            } else if (state == 4) {
+                continue;
+            } else {
+                state = 0;
+                // PWM RGB to 0xc43e1d
+                updateRedPWM(0xC4);
+                updateGreenPWM(0x3E);
+                updateBluePWM(0x1D);
+            }
         }
     }
-//-- WHILE TRUE:
-    //-- STATES
-        // LOCKED
-            // PWM RGB to 0xc43e1d
-            // 1        -> UNLOCKING1
-                // save current time
-            // others   -> LOCKED
-        // UNLOCKING1
-            // PWM RGB to 0xc4921d
-            // if elapsed time > 5 s
-                //      -> LOCKED
-            // 1        -> UNLOCKING1
-            // others   -> LOCKED
-        // UNLOCKING2
-            // if elapsed time > 5 s
-                //      -> LOCKED
-            // 1        -> UNLOCKING1
-            // others   -> LOCKED
-        // UNLOCKING3
-            // if elapsed time > 5 s
-                //      -> LOCKED
-            // 1        -> UNLOCKED
-            // others   -> LOCKED
         // UNLOCKED
             // PWM RGB to 0x1da2c4
             // D        -> LOCKED
@@ -344,19 +379,27 @@ __interrupt void ISR_PWM_PERIOD(void)
 #pragma vector = TIMER3_B1_VECTOR
 __interrupt void ISR_PWM_RGB(void)
 {
-    if ((TB3IV & 0x2) & (TB3CCR2 != 0xFF)) {
-        // red off
-        P1OUT &= ~BIT5;      
-        TB3CCTL2 &= ~CCIFG;  // clear CCR2 IFG
-    }
-    if ((TB3IV & 0x6) & (TB3CCR3 != 0xFF)) {
-        // green off
-        P1OUT &= ~BIT6;      
-        TB3CCTL3 &= ~CCIFG;  // clear CCR3 IFG
-    }
-    if ((TB3IV & 0x8) & (TB3CCR4 != 0xFF)) {
-        // blue off
-        P1OUT &= ~BIT7;      
-        TB3CCTL4 &= ~CCIFG;  // clear CCR4 IFG
+    switch (TB3IV) {
+        case 0x2:
+            if (TB3CCR2 != 0xFF) {
+                // red off
+                P1OUT &= ~BIT5;      
+            }
+            TB3CCTL2 &= ~CCIFG;  // clear CCR2 IFG
+            break;
+        case 0x6:
+            if (TB3CCR3 != 0xFF) {
+                // green off
+                P1OUT &= ~BIT6;      
+            }
+            TB3CCTL3 &= ~CCIFG;  // clear CCR2 IFG
+            break;
+        case 0x8:
+            if (TB3CCR4 != 0xFF) {
+                // blue off
+                P1OUT &= ~BIT7;      
+            }
+            TB3CCTL4 &= ~CCIFG;  // clear CCR2 IFG
+            break;
     }
 }
