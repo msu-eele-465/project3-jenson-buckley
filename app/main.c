@@ -37,12 +37,17 @@ unsigned char stepSequence[] = {
                 0b1111111,
                 0b11111111
             };
+
+//-- Function declarations
+void setupLeds();
+void setPattern(int);
 char readKeypad();
 int checkRows();
-
 void updateRedPWM(unsigned char);
 void updateGreenPWM(unsigned char);
 void updateBluePWM(unsigned char);
+
+
 //--------------------------------------Main-------------------------------------//
 int main(void)
 {
@@ -120,6 +125,7 @@ int main(void)
 //-- Setup patterns
     setupLeds();
     setPattern(2);
+    
 //-- GLOBAL ENABLES
     // enable GPIO
     // enable interrupts
@@ -127,8 +133,6 @@ int main(void)
     // previously configure port settings
     PM5CTL0 &= ~LOCKLPM5;
     __enable_interrupt();       // Enable global interrupt
-
-    while(true){}
 
 //-- WHILE TRUE:
     //-- Enter password
@@ -173,24 +177,6 @@ void setPattern(int a) {
     }
 }
 
-//---------------------------Interupt-Service-Routines---------------------------//
-// Timer for Led
-#pragma vector = TIMER0_B0_VECTOR
-__interrupt void ISR_TB0_CCR0(void)
-{
-    stepIndex = (stepIndex + 1) % seqLength; // Update step index
-    P6OUT = (stepSequence[stepIndex + stepStart] & 0b00011111); // Update Led output
-    P2OUT = ((stepSequence[stepIndex + stepStart] >>5 ) & 0b00000111); // Update Led output
-
-    while (true) {
-        char val = readKeypad();
-        if (val == 0x1) {
-            char last_read = val;
-        }
-    }
-}
-
-//------------------------------------Functions-----------------------------------//
 char readKeypad() {
     // columns on P1.4, P5.3, P5.1, P5.0
     // rows on P5.4, P1.1, P3.5, 3.1
@@ -282,7 +268,16 @@ void updateBluePWM(unsigned char duty) {
 }
 
 //---------------------------Interupt-Service-Routines---------------------------//
+// Timer for Led
+#pragma vector = TIMER0_B0_VECTOR
+__interrupt void ISR_TB0_CCR0(void)
+{
+    stepIndex = (stepIndex + 1) % seqLength; // Update step index
+    P6OUT = (stepSequence[stepIndex + stepStart] & 0b00011111); // Update Led output
+    P2OUT = ((stepSequence[stepIndex + stepStart] >>5 ) & 0b00000111); // Update Led output
+}
 
+// Period for RGB PWM
 #pragma vector = TIMER3_B0_VECTOR
 __interrupt void ISR_PWM_PERIOD(void)
 {
@@ -298,7 +293,8 @@ __interrupt void ISR_PWM_PERIOD(void)
     }    
     TB3CCTL0 &= ~CCIFG;  // clear CCR0 IFG
 }
-//-- RGB PWM ISR: RGB DUTIES
+
+// RGB PWM ISR: RGB DUTIES
 #pragma vector = TIMER3_B1_VECTOR
 __interrupt void ISR_PWM_RGB(void)
 {
