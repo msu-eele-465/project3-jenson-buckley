@@ -7,12 +7,16 @@
 // Effective clock rate = 1MHz / (8 * 4) = 31250 Hz (clock ticks per second)
 
 //----------------------------------Initilization---------------------------------//
-#include <msp430.h>
+#include "intrinsics.h"
+#include <msp430fr2355.h>
 #include <stdbool.h>
 
 char readKeypad();
 int checkRows();
 
+void updateRedPWM(unsigned char);
+void updateGreenPWM(unsigned char);
+void updateBluePWM(unsigned char);
 //--------------------------------------Main-------------------------------------//
 int main(void)
 {
@@ -25,11 +29,36 @@ int main(void)
     // ISR: ISR_HEARTBEAT
 
 //-- Setup RGB LED on P1.5, P1.6, P1.7
+    // Set up ports (outputs and driven low)
+    P1DIR |= BIT5;
+    P1DIR |= BIT6;
+    P1DIR |= BIT7;
+    P1OUT &= ~BIT5;      
+    P1OUT &= ~BIT6;
+    P1OUT &= ~BIT7;
     // global vars to hold R, G, and B pwm values in [0, 255)
-    // port (direction, initial value)
+    // rPWM, gPWM, bPWM
     // 3x: clock (setup, period, duty, clear/enable flag)
+    TB3CTL |= TBCLR;    // reset settings
+    TB3CTL |= TBSSEL__SMCLK;
+    TB3CTL |= MC__UP;
+    TB3CCR0 = 255;        // period
+    TB3CCR2 = 0;     // red duty
+    TB3CCR3 = 0;     // green duty
+    TB3CCR4 = 0;     // blue duty
+    // Enable capture compare
+    TB3CCTL0 |= CCIE;
+    TB3CCTL2 |= CCIE;
+    TB3CCTL3 |= CCIE;
+    TB3CCTL4 |= CCIE;
+    // Clear IFG
+    TB3CCTL0 &= ~CCIFG;
+    TB3CCTL2 &= ~CCIFG;
+    TB3CCTL3 &= ~CCIFG;
+    TB3CCTL4 &= ~CCIFG;
     // 3x: ISR: ISR_<[R, G, B]>
     // FUNCTION: function for updating clock period, given clock and period in [0,255)
+    // update<Red, Green, Blue>Duty()
 
 //-- Setup LED array [0,7] on P2.1, P6.0, P6.1, P6.2, P6.3, P6.4, P3.7, P2.4
     // port (direction, initial value)
@@ -75,6 +104,8 @@ int main(void)
     // Disable the GPIO power-on default high-impedance mdoe to activate
     // previously configure port settings
     PM5CTL0 &= ~LOCKLPM5;
+    __enable_interrupt();
+    __bis_SR_register(GIE); // Enable global interrupts
 
     while (true) {
         char val = readKeypad();
@@ -160,5 +191,55 @@ int checkRows() {
         return 4;
     } else {
         return 0;
+    }
+}
+
+void updateRedPWM(unsigned char duty) {
+    TB3CCR2 = duty;
+}
+
+void updateGreenPWM(unsigned char duty) {
+    TB3CCR3 = duty;
+}
+
+void updateBluePWM(unsigned char duty) {
+    TB3CCR4 = duty;
+}
+
+//---------------------------Interupt-Service-Routines---------------------------//
+
+#pragma vector = TIMER3_B0_VECTOR
+__interrupt void ISR_PWM_PERIOD(void)
+{
+    // RGB all on
+    if (TB3CCR2 != 0x0) {
+        P1OUT |= BIT5;  
+    }    
+    if (TB3CCR3 != 0x0) {
+        P1OUT |= BIT6;  
+    }    
+    if (TB3CCR4 != 0x0) {
+        P1OUT |= BIT7;  
+    }    
+    TB3CCTL0 &= ~CCIFG;  // clear CCR0 IFG
+}
+//-- RGB PWM ISR: RGB DUTIES
+#pragma vector = TIMER3_B1_VECTOR
+__interrupt void ISR_PWM_RGB(void)
+{
+    if ((TB3IV & 0x2) & (TB3CCR2 != 0xFF)) {
+        // red off
+        P1OUT &= ~BIT5;      
+        TB3CCTL2 &= ~CCIFG;  // clear CCR2 IFG
+    }
+    if ((TB3IV & 0x6) & (TB3CCR3 != 0xFF)) {
+        // green off
+        P1OUT &= ~BIT6;      
+        TB3CCTL3 &= ~CCIFG;  // clear CCR3 IFG
+    }
+    if ((TB3IV & 0x8) & (TB3CCR4 != 0xFF)) {
+        // blue off
+        P1OUT &= ~BIT7;      
+        TB3CCTL4 &= ~CCIFG;  // clear CCR4 IFG
     }
 }
