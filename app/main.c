@@ -40,9 +40,9 @@ int main(void)
     TB3CTL |= TBSSEL__SMCLK;
     TB3CTL |= MC__UP;
     TB3CCR0 = 255;        // period
-    TB3CCR2 = 1;     // red duty
-    TB3CCR3 = 1;     // green duty
-    TB3CCR4 = 1;     // blue duty
+    TB3CCR2 = 0;     // red duty
+    TB3CCR3 = 0;     // green duty
+    TB3CCR4 = 0;     // blue duty
     // Enable capture compare
     TB3CCTL0 |= CCIE;
     TB3CCTL2 |= CCIE;
@@ -84,16 +84,6 @@ int main(void)
     __enable_interrupt();
     __bis_SR_register(GIE); // Enable global interrupts
 
-
-    while (true) {
-        // turn on red
-        updateRedPWM(0xFF);
-        // turn on green
-        //updateGreenPWM(0xFF);
-        // turn on blue
-        //updateBluePWM(0xFF);
-    }
-
 //-- WHILE TRUE:
     //-- Enter password
         // while statement that is active for only 5 seconds
@@ -108,11 +98,11 @@ int main(void)
 
 //------------------------------------Functions-----------------------------------//
 void updateRedPWM(unsigned char duty) {
-    TB3CCR3 = duty;
+    TB3CCR2 = duty;
 }
 
 void updateGreenPWM(unsigned char duty) {
-    TB3CCR2 = duty;
+    TB3CCR3 = duty;
 }
 
 void updateBluePWM(unsigned char duty) {
@@ -125,28 +115,34 @@ void updateBluePWM(unsigned char duty) {
 __interrupt void ISR_PWM_PERIOD(void)
 {
     // RGB all on
-    P1OUT |= BIT5;      
-    P1OUT |= BIT6;
-    P1OUT |= BIT7;
+    if (TB3CCR2 != 0x0) {
+        P1OUT |= BIT5;  
+    }    
+    if (TB3CCR3 != 0x0) {
+        P1OUT |= BIT6;  
+    }    
+    if (TB3CCR4 != 0x0) {
+        P1OUT |= BIT7;  
+    }    
     TB3CCTL0 &= ~CCIFG;  // clear CCR0 IFG
 }
 //-- RGB PWM ISR: RGB DUTIES
 #pragma vector = TIMER3_B1_VECTOR
 __interrupt void ISR_PWM_RGB(void)
 {
-    if (TB3IV & 0x2) {
+    if ((TB3IV & 0x2) & (TB3CCR2 != 0xFF)) {
         // red off
         P1OUT &= ~BIT5;      
-        TB3CCTL2 &= ~CCIFG;  // clear CCR1 IFG
+        TB3CCTL2 &= ~CCIFG;  // clear CCR2 IFG
     }
-    if (TB3IV & 0x6) {
+    if ((TB3IV & 0x6) & (TB3CCR3 != 0xFF)) {
         // green off
         P1OUT &= ~BIT6;      
-        TB3CCTL3 &= ~CCIFG;  // clear CCR2 IFG
+        TB3CCTL3 &= ~CCIFG;  // clear CCR3 IFG
     }
-    if (TB3IV & 0x8) {
+    if ((TB3IV & 0x8) & (TB3CCR4 != 0xFF)) {
         // blue off
         P1OUT &= ~BIT7;      
-        TB3CCTL4 &= ~CCIFG;  // clear CCR3 IFG
+        TB3CCTL4 &= ~CCIFG;  // clear CCR4 IFG
     }
 }
