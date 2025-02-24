@@ -84,7 +84,7 @@ int main(void)
     TB3CTL |= TBCLR;    // reset settings
     TB3CTL |= TBSSEL__SMCLK;
     TB3CTL |= MC__UP;
-    TB3CCR0 = 25500;   // period
+    TB3CCR0 = 2;   // period (steps counter each time)
     // Enable capture compare
     TB3CCTL0 |= CCIE;
     // Clear IFG
@@ -466,15 +466,15 @@ int checkRows() {
 }
 
 void updateRedPWM(unsigned char duty) {
-    rPWM = duty*100;
+    rPWM = ((int)duty);
 }
 
 void updateGreenPWM(unsigned char duty) {
-    gPWM = duty*100;
+    gPWM = ((int)duty);
 }
 
 void updateBluePWM(unsigned char duty) {
-    bPWM = duty*100;
+    bPWM = ((int)duty);
 }
 
 //---------------------------Interupt-Service-Routines---------------------------//
