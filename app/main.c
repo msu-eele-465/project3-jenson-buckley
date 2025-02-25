@@ -61,8 +61,10 @@ unsigned char stepSequence[] = {
                 0b11111,
                 0b111111,
                 0b1111111,
-                0b11111111
-                // Pattern 3
+                0b11111111,
+                // Pattern NULL
+                0b0,
+                0b0
 
             };
 
@@ -145,7 +147,7 @@ int main(void)
 
 //-- Setup patterns
     setupLeds();
-    setPattern(0);
+    setPattern(9);
     
 //-- GLOBAL ENABLES
     // enable GPIO
@@ -163,7 +165,7 @@ int main(void)
     // 4    Unlocked
     int state = 0;
     // PWM RGB to 0xc4921d
-    updateRedPWM(0xC4);
+    updateRedPWM(0xFF);
     updateGreenPWM(0x3E);
     updateBluePWM(0x1D);
     while (true) {
@@ -175,7 +177,7 @@ int main(void)
                     // PWM RGB to 0xc4921d
                     updateRedPWM(0xC4);
                     updateGreenPWM(0x92);
-                    updateBluePWM(0x1D);
+                    updateBluePWM(0xFF);
                     // TODO: save time
                 } else {
                     state = 0;
@@ -227,20 +229,22 @@ int main(void)
                 if (key_val=='D') {             // lock
                     state = 0;
                     // PWM RGB to 0xc43e1d
-                    updateRedPWM(0xC4);
+                    updateRedPWM(0xFF);
                     updateGreenPWM(0x3E);
                     updateBluePWM(0x1D);
                     // stop and reset patterns
-                    setPattern(0);
+                    setPattern(9);
                     memset(stepOldIndex, 0, sizeof(stepOldIndex));
                     TB0CCR0 = 511;
                 } else if (key_val=='A') {      // decrease base period by 0.25 s
-                    if (TB0CCR0 > 127) {
-                        TB0CCR0 -= 128;
+                    if (basePeriod > 32) {
+                        basePeriod -= 32;
+                        TB0CCR0 = basePeriod * patternMultiplier;
                     }
                 } else if (key_val=='B') {      // increase base period by 0.25 s
-                    if (TB0CCR0 < 2432) {
-                        TB0CCR0 += 128;
+                    if (basePeriod < 608) {
+                        basePeriod += 32;
+                        TB0CCR0 = basePeriod * patternMultiplier;
                     }
                 } else if (key_val=='0') {      // pattern 0
                     // PWM RGB to 0x<custom>
@@ -399,8 +403,8 @@ void setupLeds() {
     P2OUT &= ~(BIT0 | BIT1 | BIT2);
     // Setup Timer B0
 
-    TB0CTL = TBSSEL__SMCLK | MC__UP | TBCLR | ID__8; // SMCLK (1Mhz), Stop mode, clear timer, divide by 8
-    TB0EX0 = TBIDEX__4 ;   // Extra division by 4
+    TB0CTL = TBSSEL__ACLK | MC__UP | TBCLR | ID__8; // SMCLK (1Mhz), Stop mode, clear timer, divide by 8
+    TB0EX0 = TBIDEX__8 ;   // Extra division by 4
     TB0CCR0 = basePeriod;  // Set initial speed
     TB0CCTL0 |= CCIE;      // Enable compare interrupt
 }
@@ -411,36 +415,65 @@ void setPattern(int a) {
             stepStart = 0;
             seqLength = 2;
             patternMultiplier = 4;
+            updateRedPWM(0xFF);
+            updateGreenPWM(0x00);
+            updateBluePWM(0x00);
         break;
         
         case 1:
             stepStart = 2;
-            seqLength = 6;
+            seqLength = 2;
             patternMultiplier = 4;
+            updateRedPWM(0x00);
+            updateGreenPWM(0xFF);
+            updateBluePWM(0x00);
         break;
         
         case 3:
-            stepStart = 8;
-            seqLength = 8;
+            stepStart = 4;
+            seqLength = 6;
             patternMultiplier = 2;
+            updateRedPWM(0x00);
+            updateGreenPWM(0x00);
+            updateBluePWM(0xFF);
         break;
         
         case 5:
-            stepStart = 8;
+            stepStart = 10;
             seqLength = 8;
             patternMultiplier = 6;
+            updateRedPWM(0xFF);
+            updateGreenPWM(0xFF);
+            updateBluePWM(0x00);
         break;
         
         case 6:
-            stepStart = 8;
+            stepStart = 18;
             seqLength = 8;
             patternMultiplier = 2;
+            updateRedPWM(0xFF);
+            updateGreenPWM(0x00);
+            updateBluePWM(0xFF);
         break;
 
         case 7:
-            stepStart = 8;
+            stepStart = 26;
             seqLength = 8;
             patternMultiplier = 4;
+            updateRedPWM(0x00);
+            updateGreenPWM(0xFF);
+            updateBluePWM(0xFF);
+        break;
+
+        case 2:
+        case 4:
+        case 9:
+            stepStart = 34;
+            seqLength = 2;
+            patternMultiplier = 4;
+            updateRedPWM(0x00);
+            updateGreenPWM(0x00);
+            updateBluePWM(0x00);
         break;
     }
 
