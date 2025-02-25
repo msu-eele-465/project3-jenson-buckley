@@ -21,12 +21,16 @@ You will submit this form at least twice.  Once before the project starts.  This
 |Extra credit: LED is set to a unique color for each LED pattern    | 0     |           |    ?      |
 |When the system is locked, all LEDs are off                        | 0.5   |           |    .5     |
 |When LEDs are off until a user selects a pattern                   | 0.5   |           |    .5     |
-|When the selected pattern is the same, the pattern restarts        | 0.5   |     .5    |           |
+|When the selected pattern is the same, the pattern restarts        | 0.5   |           |    .5     |
 |When a new pattern is selected, the pattern must start within 1 s  | 2     |     2     |           |
-|Previously selected pattern starts where it left off               | 0.5   |     .5    |           |
+|Previously selected pattern starts where it left off               | 0.5   |           |    .5     |
 |LED pattern transition period is changeable                        | 2     |     2     |           |
 |LED pattern 0                                                      | 0.5   |     .5    |           |
 |LED pattern 1                                                      | 0.5   |     .5    |           |
 |LED pattern 2                                                      | 0.5   |     .5    |           |
 |LED pattern 3                                                      | 0.5   |     .5    |           |
-|                                                                   | 20    |     10.5  |     10.?  |
+|LED pattern 4                                                      | 0.5   |     .5    |           |
+|LED pattern 5                                                      | 0.5   |     .5    |           |
+|LED pattern 6                                                      | 0.5   |     .5    |           |
+|LED pattern 7                                                      | 0.5   |     .5    |           |
+|                                                                   | 20    |     11.5  |     11.?  |
