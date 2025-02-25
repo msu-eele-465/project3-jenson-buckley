@@ -15,19 +15,42 @@
 int stepIndex = 0;      // Current step index
 int stepStart = 0;      // Start of the selected pattern
 int seqLength = 1;      // Length of sleected sequence
+int basePeriod = 128;
+int patternMultiplier = 1;
 
 unsigned char stepSequence[] = {
                 // Pattern 0
-                0b0,
-                0b0,
+                0b10101010,
+                0b10101010,
                 // Pattern 1
+                0b10101010,
+                0b01010101,
+                // Pattern 3
                 0b00011000,
                 0b00100100,
                 0b01000010,
                 0b10000001,
                 0b01000010,
                 0b00100100,
-                // Pattern 2
+                // Pattern 5
+                0b00000001,
+                0b00000010,
+                0b00000100,
+                0b00001000,
+                0b00010000,
+                0b00100000,
+                0b01000000,
+                0b10000000,
+                // Pattern 6
+                0b01111111,
+                0b10111111,
+                0b11011111,
+                0b11101111,
+                0b11110111,
+                0b11111011,
+                0b11111101,
+                0b11111110,
+                // Pattern 7
                 0b1,
                 0b11,
                 0b111,
@@ -36,6 +59,8 @@ unsigned char stepSequence[] = {
                 0b111111,
                 0b1111111,
                 0b11111111
+                // Pattern 3
+
             };
 char readKeypad();
 int checkRows();
@@ -152,7 +177,7 @@ void setupLeds() {
     // Setup Timer B0
     TB0CTL = TBSSEL__SMCLK | MC__UP | TBCLR | ID__8; // SMCLK (1Mhz), Stop mode, clear timer, divide by 8
     TB0EX0 = TBIDEX__4 ;   // Extra division by 4
-    TB0CCR0 = 153;  // Set initial speed
+    TB0CCR0 = basePeriod;  // Set initial speed
     TB0CCTL0 |= CCIE;      // Enable compare interrupt
 }
 
@@ -161,16 +186,45 @@ void setPattern(int a) {
         case 0:
             stepStart = 0;
             seqLength = 2;
+            patternMultiplier = 4;
         break;
         case 1:
             stepStart = 2;
             seqLength = 5;
+            patternMultiplier = 4;
+
         break;
-        case 2:
+        case 3:
             stepStart = 8;
             seqLength = 8;
+            patternMultiplier = 2
+
         break;
+        case 5:
+            stepStart = 8;
+            seqLength = 8;
+            patternMultiplier = 6
+
+        break;
+        
+        case 6:
+            stepStart = 8;
+            seqLength = 8;
+            patternMultiplier = 2
+        
+        break;
+
+        case 7:
+            stepStart = 8;
+            seqLength = 8;
+            patternMultiplier = 4
+
+        break;
+
     }
+
+    TB0CCR0 = basePeriod * patternMultiplier;
+    
 }
 
 //---------------------------Interupt-Service-Routines---------------------------//
