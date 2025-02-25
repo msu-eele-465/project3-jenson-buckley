@@ -18,19 +18,42 @@ int stepOldIndex[] = {0, 0, 0, 0, 0, 0, 0, 0};   // last index for each pattern
 int prev_pattern = 0;
 int stepStart = 0;      // Start of the selected pattern
 int seqLength = 1;      // Length of sleected sequence
+int basePeriod = 128;
+int patternMultiplier = 1;
 
 unsigned char stepSequence[] = {
                 // Pattern 0
-                0b0,
-                0b0,
+                0b10101010,
+                0b10101010,
                 // Pattern 1
+                0b10101010,
+                0b01010101,
+                // Pattern 3
                 0b00011000,
                 0b00100100,
                 0b01000010,
                 0b10000001,
                 0b01000010,
                 0b00100100,
-                // Pattern 2
+                // Pattern 5
+                0b00000001,
+                0b00000010,
+                0b00000100,
+                0b00001000,
+                0b00010000,
+                0b00100000,
+                0b01000000,
+                0b10000000,
+                // Pattern 6
+                0b01111111,
+                0b10111111,
+                0b11011111,
+                0b11101111,
+                0b11110111,
+                0b11111011,
+                0b11111101,
+                0b11111110,
+                // Pattern 7
                 0b1,
                 0b11,
                 0b111,
@@ -39,6 +62,8 @@ unsigned char stepSequence[] = {
                 0b111111,
                 0b1111111,
                 0b11111111
+                // Pattern 3
+
             };
 
 // RGB LED vars
@@ -373,9 +398,10 @@ void setupLeds() {
     P2DIR |= BIT0 | BIT1 | BIT2;
     P2OUT &= ~(BIT0 | BIT1 | BIT2);
     // Setup Timer B0
-    TB0CTL = TBSSEL__ACLK | MC__UP | TBCLR | ID__8; // ACLK (32,768), Stop mode, clear timer, divide by 8
-    TB0EX0 = TBIDEX__8 ;   // Extra division by 8
-    TB0CCR0 = 511;        // Set initial speed to 1 s
+
+    TB0CTL = TBSSEL__SMCLK | MC__UP | TBCLR | ID__8; // SMCLK (1Mhz), Stop mode, clear timer, divide by 8
+    TB0EX0 = TBIDEX__4 ;   // Extra division by 4
+    TB0CCR0 = basePeriod;  // Set initial speed
     TB0CCTL0 |= CCIE;      // Enable compare interrupt
 }
 
@@ -384,16 +410,42 @@ void setPattern(int a) {
         case 0:
             stepStart = 0;
             seqLength = 2;
+            patternMultiplier = 4;
         break;
+        
         case 1:
             stepStart = 2;
             seqLength = 6;
+            patternMultiplier = 4;
         break;
-        case 2:
+        
+        case 3:
             stepStart = 8;
             seqLength = 8;
+            patternMultiplier = 2;
+        break;
+        
+        case 5:
+            stepStart = 8;
+            seqLength = 8;
+            patternMultiplier = 6;
+        break;
+        
+        case 6:
+            stepStart = 8;
+            seqLength = 8;
+            patternMultiplier = 2;
+        break;
+
+        case 7:
+            stepStart = 8;
+            seqLength = 8;
+            patternMultiplier = 4;
         break;
     }
+
+    TB0CCR0 = basePeriod * patternMultiplier;
+    
 }
 
 char readKeypad() {
